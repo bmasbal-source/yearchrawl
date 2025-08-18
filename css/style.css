@@ -1,7 +1,7 @@
 body {
-  background: #f0ede7; /* Soft off-white inspired by natural light */
+  background: #f0ede7;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #4b3b2b; /* Deep brown */
+  color: #4b3b2b;
   margin: 0;
   padding: 0;
 }
@@ -11,7 +11,7 @@ body {
   font-weight: 700;
   text-align: center;
   margin: 60px 0 40px 0;
-  color: #6b4c3b; /* Rustic dark warm brown */
+  color: #6b4c3b;
   font-family: 'Georgia', serif;
   letter-spacing: 0.06em;
 }
@@ -19,11 +19,11 @@ body {
 .menu-card {
   margin: 30px auto 60px auto;
   max-width: 900px;
-  background: #fff8f0; /* Very light cream */
+  background: #fff8f0;
   border-radius: 20px;
   box-shadow: 0 8px 20px rgb(107 76 59 / 0.15);
   padding: 40px 50px;
-  border: 1.5px solid #d3b99d; /* Soft warm tan border */
+  border: 1.5px solid #d3b99d;
   transition: box-shadow 0.3s ease;
 }
 
@@ -176,9 +176,18 @@ body {
 }
 
 /* Responsive adjustments */
-@media(max-width: 720px){
-  .menu-card { padding: 24px 16px; margin: 20px auto 40px; }
-  .search-box { width: 100%; margin: 8px 0; }
-  .section-title { font-size: 1.25rem; }
+@media (max-width: 720px) {
+  .menu-card {
+    padding: 24px 16px;
+    margin: 20px auto 40px;
+  }
+  .search-box {
+    width: 100%;
+    margin: 8px 0;
+  }
+  .section-title {
+    font-size: 1.25rem;
+  }
 }
+
 
