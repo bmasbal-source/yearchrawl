@@ -13,6 +13,40 @@ let user = null;
 let phrasesGreyed = false;
 let cachedFillerDict = [];
 
+// Utility to chunk an array into smaller arrays
+const MAX_CHUNK_SIZE = 300;
+function chunkArray(arr, chunkSize) {
+  let chunks = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    chunks.push(arr.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+// Upload filler dict chunks sequentially to Firestore
+async function uploadFillerChunks(userId, words) {
+  let chunks = chunkArray(words, MAX_CHUNK_SIZE);
+  for (let i = 0; i < chunks.length; i++) {
+    let field = `filler_phrases_${i}`;
+    let data = { [field]: chunks[i] };
+    await db.collection('users').doc(userId).set(data, { merge: true });
+  }
+}
+
+// Load and combine all filler dict chunks from Firestore
+async function loadFillerDict(userId) {
+  let doc = await db.collection('users').doc(userId).get();
+  if (!doc.exists) return [];
+  let data = doc.data();
+  let combined = [];
+  for (let key in data) {
+    if (key.startsWith('filler_phrases_') && Array.isArray(data[key])) {
+      combined = combined.concat(data[key]);
+    }
+  }
+  return combined;
+}
+
 function show(viewId) {
   document.getElementById('login-view').style.display = (viewId === 'login') ? 'block' : 'none';
   document.getElementById('main-menu').style.display = (viewId === 'main') ? 'block' : 'none';
@@ -93,30 +127,34 @@ function fillerPhraseCombinations(words) {
 }
 
 // --- User data load/save ---
-function loadUserData() {
-  db.collection('users').doc(user.uid).get().then(doc => {
-    let data = doc.exists ? doc.data() : {};
-    let phrases = Array.isArray(data.search_phrases) ? data.search_phrases.slice(0, 20) : [];
-    buildSearchPhraseInputs(phrases);
-    phrasesGreyed = !!data.search_phrases_greyed;
-    setPhraseGreyState(phrasesGreyed);
-    // Preferences
-    document.getElementById('video-short').checked = data.video_short || false;
-    document.getElementById('video-medium').checked = data.video_medium || false;
-    document.getElementById('video-long').checked = data.video_long || false;
-    document.getElementById('age-restricted').checked = data.age_restricted || false;
-    document.getElementById('date-from').value = data.date_range?.from || '';
-    document.getElementById('date-to').value = data.date_range?.to || '';
-    document.getElementById('ocr-phrases').value = (Array.isArray(data.ocr_terms) ? data.ocr_terms : []).join(', ');
-    cachedFillerDict = Array.isArray(data.filler_phrases_dict) ? data.filler_phrases_dict : [];
-    document.getElementById('filler-dict').value = cachedFillerDict.join(', ');
-    updateTokenCount(data.api_tokens_remaining);
-    renderHitList(data.daily_hits || []);
-  });
+async function loadUserData() {
+  let doc = await db.collection('users').doc(user.uid).get();
+  let data = doc.exists ? doc.data() : {};
+  // Load filler dict chunks and combine
+  cachedFillerDict = await loadFillerDict(user.uid);
+
+  let phrases = Array.isArray(data.search_phrases) ? data.search_phrases.slice(0, 20) : [];
+  buildSearchPhraseInputs(phrases);
+  phrasesGreyed = !!data.search_phrases_greyed;
+  setPhraseGreyState(phrasesGreyed);
+
+  // Preferences
+  document.getElementById('video-short').checked = data.video_short || false;
+  document.getElementById('video-medium').checked = data.video_medium || false;
+  document.getElementById('video-long').checked = data.video_long || false;
+  document.getElementById('age-restricted').checked = data.age_restricted || false;
+  document.getElementById('date-from').value = data.date_range?.from || '';
+  document.getElementById('date-to').value = data.date_range?.to || '';
+  document.getElementById('ocr-phrases').value = (Array.isArray(data.ocr_terms) ? data.ocr_terms : []).join(', ');
+
+  document.getElementById('filler-dict').value = cachedFillerDict.join(', ');
+
+  updateTokenCount(data.api_tokens_remaining);
+  renderHitList(data.daily_hits || []);
 }
 
 // --- Save phrases ---
-document.getElementById('save-phrases-btn').onclick = function() {
+document.getElementById('save-phrases-btn').onclick = async function() {
   let boxes = document.querySelectorAll('#search-phrase-list input');
   let phrases = [];
   boxes.forEach(box => {
@@ -124,36 +162,34 @@ document.getElementById('save-phrases-btn').onclick = function() {
     if (val) phrases.push(val);
   });
   let phrasesToSave = fillPhrases(phrases);
-  db.collection('users').doc(user.uid).set({
+  await db.collection('users').doc(user.uid).set({
     search_phrases: phrasesToSave,
     search_phrases_greyed: true
-  }, { merge: true }).then(() => {
-    setPhraseGreyState(true);
-    loadUserData();
-  });
+  }, { merge: true });
+  setPhraseGreyState(true);
+  loadUserData();
 };
-document.getElementById('edit-phrases-btn').onclick = function() {
-  db.collection('users').doc(user.uid).set({
+document.getElementById('edit-phrases-btn').onclick = async function() {
+  await db.collection('users').doc(user.uid).set({
     search_phrases_greyed: false
-  }, { merge: true }).then(() => {
-    setPhraseGreyState(false);
-    loadUserData();
-  });
+  }, { merge: true });
+  setPhraseGreyState(false);
+  loadUserData();
 };
 
 // --- OCR phrases ---
-document.getElementById('save-ocr-btn').onclick = function() {
+document.getElementById('save-ocr-btn').onclick = async function() {
   let txt = document.getElementById('ocr-phrases').value;
   let terms = txt.split(',').map(t => t.trim()).filter(t => t.length);
-  db.collection('users').doc(user.uid).set({
+  await db.collection('users').doc(user.uid).set({
     ocr_terms: terms
   }, { merge: true });
 };
 
 // --- Preferences ---
 ['video-short','video-medium','video-long','age-restricted','date-from','date-to'].forEach(id => {
-  document.getElementById(id).onchange = function() {
-    db.collection('users').doc(user.uid).set({
+  document.getElementById(id).onchange = async function() {
+    await db.collection('users').doc(user.uid).set({
       video_short: document.getElementById('video-short').checked,
       video_medium: document.getElementById('video-medium').checked,
       video_long: document.getElementById('video-long').checked,
@@ -167,29 +203,32 @@ document.getElementById('save-ocr-btn').onclick = function() {
 });
 
 // --- Filler phrase management ---
-document.getElementById('save-filler-btn').onclick = function() {
+document.getElementById('save-filler-btn').onclick = async function() {
   let words = document.getElementById('filler-dict').value.split(',').map(w => w.trim()).filter(w => w);
-  db.collection('users').doc(user.uid).set({
-    filler_phrases_dict: words
-  }, { merge: true }).then(() => {
+  try {
+    await uploadFillerChunks(user.uid, words);
     cachedFillerDict = words;
     document.getElementById('filler-status').textContent = 'Saved!';
     setTimeout(() => document.getElementById('filler-status').textContent = '', 2000);
-  });
+  } catch(e) {
+    alert('Error saving filler dictionary: ' + e.message);
+  }
 };
+
 document.getElementById('account-btn').onclick = function() {
   document.getElementById('modal-filler-dict').value = cachedFillerDict.join(', ');
 };
-document.getElementById('modal-filler-save').onclick = function() {
+document.getElementById('modal-filler-save').onclick = async function() {
   let words = document.getElementById('modal-filler-dict').value.split(',').map(w => w.trim()).filter(w => w);
-  db.collection('users').doc(user.uid).set({
-    filler_phrases_dict: words
-  }, { merge: true }).then(() => {
+  try {
+    await uploadFillerChunks(user.uid, words);
     cachedFillerDict = words;
     document.getElementById('modal-filler-status').textContent = 'Updated!';
     setTimeout(() => document.getElementById('modal-filler-status').textContent = '', 2000);
     document.getElementById('filler-dict').value = words.join(', ');
-  });
+  } catch(e) {
+    alert('Error updating filler dictionary: ' + e.message);
+  }
 };
 
 function renderHitList(hits) {
@@ -210,8 +249,11 @@ function renderHitList(hits) {
   html += "</ul>";
   list.innerHTML = html;
 }
+
 function updateTokenCount(count) { document.getElementById('token-count').textContent = count ?? '—'; }
+
 };
+
 
 
 
