@@ -17,11 +17,7 @@
     .section-title { font-size: 1.2rem; font-weight: 600; margin: 24px 0 8px 0; }
     #ocr-phrases {width:100%;min-height:58px;}
     #hit-list {margin-top:30px;}
-    /* Responsive */
-    @media(max-width:700px){
-      .menu-card{padding:12px;}
-      .search-box{width:98%;}
-    }
+    @media(max-width:700px){ .menu-card{padding:12px;} .search-box{width:98%;} }
   </style>
 </head>
 <body>
@@ -40,30 +36,32 @@
       </div>
 
       <div class="section-title">Search Phrases (max 20):</div>
-      <div id="search-phrase-list"></div>
-      <div style="margin:14px 0;">
-        <button id="save-phrases-btn" class="btn btn-success save-btn">Save Phrases</button>
-        <button id="edit-phrases-btn" class="btn btn-outline-warning">Edit</button>
-      </div>
+      <form id="search-phrases-form">
+        <div id="search-phrase-list"></div>
+        <div style="margin:14px 0;">
+          <button type="button" id="save-phrases-btn" class="btn btn-success save-btn">Save Phrases</button>
+          <button type="button" id="edit-phrases-btn" class="btn btn-outline-warning">Edit</button>
+        </div>
+      </form>
       
       <div class="section-title">Search Preferences:</div>
-      <div>
+      <form id="prefs-form">
         <label><input type="checkbox" id="video-short"> Short (&lt;4min)</label>
         <label style="margin-left:18px;"><input type="checkbox" id="video-medium"> Medium (4–20min)</label>
         <label style="margin-left:18px;"><input type="checkbox" id="video-long"> Long (&gt;20min)</label>
         <label style="margin-left:18px;"><input type="checkbox" id="age-restricted"> Age Restricted</label>
-      </div>
-      <div style="margin-top:14px;">
-        <label>Date Range (YYYYMMDD): </label>
-        <input type="text" maxlength="8" id="date-from" placeholder="Start">
-        <input type="text" maxlength="8" id="date-to" placeholder="End">
-      </div>
+        <div style="margin-top:14px;">
+          <label>Date Range (YYYYMMDD): </label>
+          <input type="text" maxlength="8" id="date-from" placeholder="Start">
+          <input type="text" maxlength="8" id="date-to" placeholder="End">
+        </div>
+      </form>
       
       <div class="section-title">OCR Search Phrases:</div>
-      <textarea id="ocr-phrases" rows="3" placeholder="Enter phrases separated by commas"></textarea>
-      <div>
-        <button id="save-ocr-btn" class="btn btn-primary mt-2">Save OCR Phrases</button>
-      </div>
+      <form id="ocr-form">
+        <textarea id="ocr-phrases" rows="3" placeholder="Enter phrases separated by commas"></textarea>
+        <button type="button" id="save-ocr-btn" class="btn btn-primary mt-2">Save OCR Phrases</button>
+      </form>
 
       <div class="section-title">Live API Token Tracker:</div>
       <div class="live-stats">YouTube API tokens remaining: <span id="token-count">—</span></div>
@@ -72,11 +70,11 @@
       <div id="hit-list"></div>
 
       <div id="filler-menu" class="section-title" style="margin-top:30px;">Filler Phrase Dictionary:</div>
-      <div>
+      <form id="filler-form">
         <textarea id="filler-dict" rows="2" placeholder="Enter comma-separated words"></textarea>
-        <button id="save-filler-btn" class="btn btn-info mt-2">Save Filler Dict</button>
+        <button type="button" id="save-filler-btn" class="btn btn-info mt-2">Save Filler Dict</button>
         <span id="filler-status"></span>
-      </div>
+      </form>
       <div style="margin-top:12px;">
         <small>All possible 2- and 3-word combinations will be used to autopopulate search phrases if not manually filled.</small>
       </div>
@@ -97,14 +95,16 @@
       </div>
     </div></div>
   </div>
-  <!-- Bootstrap JS for modal -->
+  
+  <!-- Place scripts at end of body -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Firebase & App -->
   <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore-compat.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
+
+
 
 
