@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;900&display=swap');
+
+body {
+  background: #fffdf7;
+  color: #432618;
+  font-family: 'Poppins', sans-serif;
+  margin: 1rem;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.background-shapes {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.background-shapes svg {
+  position: absolute;
+  width: 40vw;
+  height: 40vw;
+  filter: drop-shadow(0 0 6px rgba(0,0,0,0.06));
+  border-radius: 50% / 100%;
+  opacity: 0.7;
+}
+
+.shape1 {
+  top: -10%;
+  left: -15%;
+}
+
+.shape2 {
+  top: 30%;
+  right: -15%;
+}
+
+.shape3 {
+  bottom: -10%;
+  left: 20%;
+  opacity: 0.6;
+}
+
+.large-title {
+  font-weight: 900;
+  text-align: center;
+  color: #C25B3A;
+  margin-bottom: 1rem;
+  font-size: 2.8rem;
+  letter-spacing: 0.05em;
+}
+
+input.search-box, textarea.input-earth {
+  margin-bottom: 0.6rem;
+  border-radius: 30px;
+  border: 2px solid #A3B18A;
+  padding: 12px 20px;
+  font-weight: 600;
+  font-size: 1rem;
+  background-color: #f6f3ea;
+  color: #4b4639;
+  transition: border-color 0.3s ease;
+}
+
+input.search-box:focus, textarea.input-earth:focus {
+  border-color: #C25B3A;
+  outline: none;
+  box-shadow: 0 0 8px #DDBEA9AA;
+}
+
+input.search-box:disabled {
+  background: #f2ece7;
+  color: #a49887;
+}
+
+.greyed {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-earth {
+  background-color: #A3B18A;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 30px;
+  padding: 0.6rem 1.8rem;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+.btn-earth:hover,
+.btn-earth:focus {
+  background-color: #868f6c;
+  color: #fff;
+}
+
+.btn-earth-outline {
+  background-color: transparent;
+  color: #A3B18A;
+  font-weight: 700;
+  border: 2px solid #A3B18A;
+  border-radius: 30px;
+  padding: 0.5rem 1.5rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.btn-earth-outline:hover,
+.btn-earth-outline:focus {
+  background-color: #A3B18A;
+  color: #fff;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.account-menu {
+  position: relative;
+  display: inline-block;
+  font-weight: 700;
+  cursor: pointer;
+  color: #A3B18A;
+}
+
+.account-menu:hover .account-dropdown {
+  display: block;
+}
+
+.account-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 35px;
+  background: #f6f3ea;
+  border: 2px solid #A3B18A;
+  border-radius: 15px;
+  width: 250px;
+  box-shadow: 0 4px 24px rgba(163,177,138,0.5);
+  padding: 15px;
+  z-index: 20;
+}
+
+.account-dropdown textarea {
+  width: 100%;
+  height: 90px;
+  resize: vertical;
+  font-size: 1rem;
+  padding: 10px 15px;
+  border-radius: 20px;
+  border: 2px solid #A3B18A;
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 8px;
+  color: #4b4639;
+  background-color: #f0f0d6;
+}
+
+.account-dropdown small {
+  color: #7d7f68;
+}
+
+.hit-list {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 1rem;
+  border-radius: 15px;
+  border: 2px solid #A3B18A;
+  padding: 10px 15px;
+  background-color: #f6f3ea;
+}
+
+.hit-list ul {
+  padding-left: 0;
+  list-style-type: none;
+  margin: 0;
+}
+
+.hit-list li {
+  margin-bottom: 0.5rem;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff9ec;
+  box-shadow: 0 1px 6px #d2d5a7cc;
+}
+
+.hit-list a {
+  text-decoration: none;
+  color: #A3B18A;
+  font-weight: 800;
+}
+
+.form-check-inline {
+  margin-right: 1rem;
+}
+
+.form-label {
+  font-weight: 700;
+  color: #877d68;
+}
+
+.status-msg {
+  margin-top: 12px;
+  font-weight: 700;
+  color: #A3B18A;
+}
+
+/* Make buttons and inputs gently curved */
+.btn, input, textarea {
+  border-radius: 30px !important;
+}
+
