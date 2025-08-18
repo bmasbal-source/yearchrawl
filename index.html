@@ -6,20 +6,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>YouTube OCR Daily</title>
 
-<!-- Firebase SDK -->
+<!-- Firebase JS SDKs for App, Auth, Firestore -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-<!-- Bootstrap 5 CSS -->
+<!-- Bootstrap CSS for styling -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-<!-- Custom styles -->
+<!-- Load custom CSS -->
 <link href="css/style.css" rel="stylesheet" />
-
 </head>
 <body>
 
-<!-- Background shapes -->
+<!-- Background curved shapes with earthy pastel colors -->
 <div class="background-shapes">
   <svg class="shape1" viewBox="0 0 400 400" preserveAspectRatio="none">
     <path fill="#DDBEA9" d="M0,0 Q100,200 400,100 L400,400 L0,400 Z" />
@@ -32,6 +31,7 @@
   </svg>
 </div>
 
+<!-- Login View -->
 <div id="login-view" class="container" style="display:none;">
   <h1 class="large-title">YouTube OCR Daily</h1>
   <div class="text-center">
@@ -39,9 +39,12 @@
   </div>
 </div>
 
+<!-- Main Menu View for signed-in users -->
 <div id="main-menu" class="container" style="display:none;">
   <div class="top-bar mb-3">
+    <!-- Display logged-in user's email -->
     <div><span id="user-email" class="fw-bold"></span></div>
+    <!-- Account menu with filler dict and sign-out -->
     <div class="account-menu">
       <button class="btn btn-earth-outline btn-sm me-2">☰ Account</button>
       <div class="account-dropdown">
@@ -55,21 +58,27 @@
 
   <h2 class="large-title">YouTube OCR Daily Search Phrases</h2>
 
+  <!-- Container for 20 search phrase input boxes -->
   <div id="search-phrase-list" class="mb-3"></div>
 
+  <!-- Buttons for editing and saving search phrases -->
   <div class="d-flex gap-3 mb-3 flex-wrap">
     <button id="edit-phrases-btn" class="btn btn-earth-outline flex-grow-1 flex-md-grow-0">Edit Phrases</button>
     <button id="save-phrases-btn" class="btn btn-earth flex-grow-1 flex-md-grow-0">Save Phrases</button>
   </div>
 
+  <!-- Search Preferences Section -->
   <h3 class="section-title">Search Preferences</h3>
 
+  <!-- Published After date field -->
   <div class="mb-3 row gx-2 gy-2 align-items-center">
     <label for="date-from" class="col-sm-3 col-form-label form-label">Published After (YYYY-MM-DD or YYYYMMDD)</label>
     <div class="col-sm-4">
       <input type="text" id="date-from" class="form-control rounded-pill input-earth" placeholder="Start date" />
     </div>
   </div>
+
+  <!-- Published Before date field -->
   <div class="mb-3 row gx-2 gy-2 align-items-center">
     <label for="date-to" class="col-sm-3 col-form-label form-label">Published Before (YYYY-MM-DD or YYYYMMDD)</label>
     <div class="col-sm-4">
@@ -77,6 +86,7 @@
     </div>
   </div>
 
+  <!-- Video length checkboxes -->
   <div class="mb-3 d-flex flex-wrap gap-3 align-items-center">
     <label class="form-label me-3 mb-0">Video Length:</label>
     <div class="form-check form-check-inline">
@@ -93,30 +103,40 @@
     </div>
   </div>
 
+  <!-- Age restricted videos only checkbox -->
   <div class="mb-3 form-check">
     <input class="form-check-input" type="checkbox" id="age-restricted" />
     <label class="form-check-label" for="age-restricted">Only Age Restricted</label>
   </div>
 
+  <!-- OCR search phrases textarea -->
   <div>
     <label for="ocr-phrases" class="form-label">OCR Search Phrases (comma or space separated, max 100):</label>
     <textarea id="ocr-phrases" rows="2" class="form-control rounded-pill input-earth" placeholder="Type OCR phrases here..."></textarea>
     <button id="save-ocr-btn" class="btn btn-earth btn-sm mt-2">Save OCR Phrases</button>
   </div>
 
+  <!-- Run search button, status message, and token count -->
   <div class="mt-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
     <button id="run-scheduled-btn" class="btn btn-earth btn-lg rounded-pill flex-grow-1 flex-md-grow-0">Run Scheduled Search</button>
     <span class="status-msg" id="run-scheduled-status"></span>
     <span class="fw-bold">Tokens remaining: <span id="token-count">—</span></span>
   </div>
 
+  <!-- Hit list -->
   <h3 class="section-title mt-5">Daily OCR Hits</h3>
   <div id="hit-list" class="hit-list"></div>
 </div>
 
+<!-- Load main JavaScript -->
 <script src="js/main.js"></script>
 
 </body>
 </html>
+
+
+
+
+
 
 
