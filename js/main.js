@@ -117,20 +117,26 @@ window.onload = function () {
     return phrases;
   }
 
-  function fillerPhraseCombinations(words) {
-    let result = [];
-    for (let i = 0; i < words.length; i++) {
-      for (let j = 0; j < words.length; j++) {
-        if (i === j) continue;
-        result.push(words[i] + " " + words[j]);
-        for (let k = 0; k < words.length; k++) {
-          if (k === i || k === j) continue;
-          result.push(words[i] + " " + words[j] + " " + words[k]);
-        }
+ function fillerPhraseCombinations(words, maxSize = 1000) {
+  let result = new Set();
+  outer: for (let i = 0; i < words.length; i++) {
+    for (let j = 0; j < words.length; j++) {
+      if (i === j) continue;
+      let twoWord = words[i] + ' ' + words[j];
+      result.add(twoWord);
+      if (result.size >= maxSize) break outer;
+
+      for (let k = 0; k < words.length; k++) {
+        if (k === i || k === j) continue;
+        let threeWord = words[i] + ' ' + words[j] + ' ' + words[k];
+        result.add(threeWord);
+        if (result.size >= maxSize) break outer;
       }
     }
-    return [...new Set(result)];
   }
+  return Array.from(result);
+}
+
 
   // --- User data load/save ---
   async function loadUserData() {
@@ -340,6 +346,7 @@ window.onload = function () {
     }, 10000);
   };
 };
+
 
 
 
