@@ -13,8 +13,8 @@ window.onload = function () {
   let phrasesGreyed = false;
   let cachedFillerDict = [];
 
-  // Utility to chunk an array into smaller arrays
   const MAX_CHUNK_SIZE = 300;
+
   function chunkArray(arr, chunkSize) {
     let chunks = [];
     for (let i = 0; i < arr.length; i += chunkSize) {
@@ -23,7 +23,6 @@ window.onload = function () {
     return chunks;
   }
 
-  // Upload filler dict chunks sequentially to Firestore
   async function uploadFillerChunks(userId, words) {
     let chunks = chunkArray(words, MAX_CHUNK_SIZE);
     for (let i = 0; i < chunks.length; i++) {
@@ -33,7 +32,6 @@ window.onload = function () {
     }
   }
 
-  // Load and combine all filler dict chunks from Firestore
   async function loadFillerDict(userId) {
     let doc = await db.collection("users").doc(userId).get();
     if (!doc.exists) return [];
@@ -105,10 +103,33 @@ window.onload = function () {
     phrasesGreyed = greyed;
   }
 
+  // New function: generate random 2- or 3-word phrases with independently random words
+  function generateRandomPhrases(words, count = 1000) {
+    const result = new Set();
+
+    function getRandomWord() {
+      return words[Math.floor(Math.random() * words.length)];
+    }
+
+    while (result.size < count) {
+      const phraseLength = Math.random() < 0.5 ? 2 : 3;
+      let phraseWords = [];
+      while (phraseWords.length < phraseLength) {
+        let w = getRandomWord();
+        if (!phraseWords.includes(w)) phraseWords.push(w);
+      }
+      let phrase = phraseWords.join(" ");
+      result.add(phrase);
+    }
+
+    return Array.from(result);
+  }
+
+  // Updated fillPhrases uses generateRandomPhrases for filler phrases
   function fillPhrases(userPhrases) {
     let phrases = Array.isArray(userPhrases) ? userPhrases.slice(0) : [];
-    phrases = phrases.filter((p) => !/^\d{8}$/.test(p));
-    let combos = fillerPhraseCombinations(cachedFillerDict);
+    phrases = phrases.filter((p) => !/^\d{8}$/.test(p)); // remove date-like phrases
+    let combos = generateRandomPhrases(cachedFillerDict, 1000);
     while (phrases.length < 20 && combos.length) {
       // Randomly select filler combo
       let idx = Math.floor(Math.random() * combos.length);
@@ -117,32 +138,9 @@ window.onload = function () {
     return phrases;
   }
 
- function fillerPhraseCombinations(words, maxSize = 1000) {
-  let result = new Set();
-  outer: for (let i = 0; i < words.length; i++) {
-    for (let j = 0; j < words.length; j++) {
-      if (i === j) continue;
-      let twoWord = words[i] + ' ' + words[j];
-      result.add(twoWord);
-      if (result.size >= maxSize) break outer;
-
-      for (let k = 0; k < words.length; k++) {
-        if (k === i || k === j) continue;
-        let threeWord = words[i] + ' ' + words[j] + ' ' + words[k];
-        result.add(threeWord);
-        if (result.size >= maxSize) break outer;
-      }
-    }
-  }
-  return Array.from(result);
-}
-
-
-  // --- User data load/save ---
   async function loadUserData() {
     let doc = await db.collection("users").doc(user.uid).get();
     let data = doc.exists ? doc.data() : {};
-    // Load filler dict chunks and combine
     cachedFillerDict = await loadFillerDict(user.uid);
 
     let phrases = Array.isArray(data.search_phrases)
@@ -152,7 +150,6 @@ window.onload = function () {
     phrasesGreyed = !!data.search_phrases_greyed;
     setPhraseGreyState(phrasesGreyed);
 
-    // Preferences
     document.getElementById("video-short").checked = data.video_short || false;
     document.getElementById("video-medium").checked = data.video_medium || false;
     document.getElementById("video-long").checked = data.video_long || false;
@@ -169,7 +166,6 @@ window.onload = function () {
     renderHitList(data.daily_hits || []);
   }
 
-  // --- Save phrases ---
   document.getElementById("save-phrases-btn").onclick = async function () {
     let boxes = document.querySelectorAll("#search-phrase-list input");
     let phrases = [];
@@ -205,7 +201,6 @@ window.onload = function () {
     loadUserData();
   };
 
-  // --- OCR phrases ---
   document.getElementById("save-ocr-btn").onclick = async function () {
     let txt = document.getElementById("ocr-phrases").value;
     let terms = txt.split(",").map((t) => t.trim()).filter((t) => t.length);
@@ -220,7 +215,6 @@ window.onload = function () {
       );
   };
 
-  // --- Preferences ---
   [
     "video-short",
     "video-medium",
@@ -249,7 +243,6 @@ window.onload = function () {
     };
   });
 
-  // --- Filler phrase management ---
   document.getElementById("save-filler-btn").onclick = async function () {
     let words = document
       .getElementById("filler-dict")
@@ -265,6 +258,7 @@ window.onload = function () {
       alert("Error saving filler dictionary: " + e.message);
     }
   };
+
   document.getElementById("account-btn").onclick = function () {
     document.getElementById("modal-filler-dict").value = cachedFillerDict.join(
       ", "
@@ -290,7 +284,6 @@ window.onload = function () {
     }
   };
 
-  // --- Hit List ---
   function renderHitList(hits) {
     let list = document.getElementById("hit-list");
     if (!hits || hits.length === 0) {
@@ -310,18 +303,16 @@ window.onload = function () {
     list.innerHTML = html;
   }
 
-  // --- Update the YouTube API tokens live count ---
   function updateTokenCount(count) {
     document.getElementById("token-count").textContent = count ?? "—";
   }
 
-  // --- Manual backend execution trigger ---
   document.getElementById("run-scheduled-btn").onclick = async function () {
     const statusSpan = document.getElementById("run-scheduled-status");
     statusSpan.textContent = "Running...";
     try {
       const functionUrl =
-        "https://us-central1-yearchrawlv001.cloudfunctions.net/scheduled_youtube_search";
+        "https://us-central1-YOUR_PROJECT.cloudfunctions.net/scheduled_youtube_search";
       let token = user ? await user.getIdToken() : null;
 
       const response = await fetch(functionUrl, {
@@ -340,12 +331,13 @@ window.onload = function () {
       statusSpan.textContent = `Request failed: ${err.message}`;
     }
 
-    // Clear status after 10 seconds
     setTimeout(() => {
       statusSpan.textContent = "";
     }, 10000);
   };
 };
+
+
 
 
 
