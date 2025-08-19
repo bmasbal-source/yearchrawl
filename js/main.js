@@ -1,9 +1,9 @@
 // js/main.js
 /**
- * Frontend JavaScript for YouTube OCR Daily
- * - Firebase auth and Firestore integration
- * - UI management of search phrases, preferences, filler dictionary
- * - Calls backend Cloud Function securely with user Firebase token
+ * Frontend JavaScript for YouTube OCR Daily with cors-anywhere proxy
+ * - Adds a proxy in front of API requests to overcome GitHub Pages CORS
+ * - Firebase auth and Firestore data management
+ * - All API POST requests go through the CORS proxy
  */
 
 // Firebase config for your project
@@ -16,8 +16,10 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Your backend Cloud Function URL for scheduled searches
+// Backend Cloud Function URL (without proxy)
 const CLOUD_FUNCTION_URL = "https://us-central1-yearchrawlv001.cloudfunctions.net/scheduled_youtube_search";
+// CORS-Anywhere proxy (for demo/development; use your own for production)
+const CORS_PROXY = "https://cors-anywhere.herokuapp.com/";
 
 let user = null;
 let phrasesGreyed = false;
@@ -35,14 +37,12 @@ window.onload = () => {
     }
   });
 
-  // Event listeners for auth and UI buttons
   document.getElementById("signin-btn").onclick = () => {
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).catch(e => alert("Sign-in failed: " + e.message));
   };
 
   document.getElementById("signout-btn").onclick = () => auth.signOut();
-
   document.getElementById("save-phrases-btn").onclick = saveSearchPhrases;
   document.getElementById("edit-phrases-btn").onclick = enableSearchEditing;
   document.getElementById("save-ocr-btn").onclick = saveOcrPhrases;
@@ -53,19 +53,16 @@ window.onload = () => {
     .forEach(id => document.getElementById(id).addEventListener("change", savePreferences));
 };
 
-// Show login container, hide main menu
 function showLogin() {
   document.getElementById("login-view").style.display = "block";
   document.getElementById("main-menu").style.display = "none";
 }
 
-// Show main menu, hide login container
 function showMainMenu() {
   document.getElementById("login-view").style.display = "none";
   document.getElementById("main-menu").style.display = "block";
 }
 
-// Load user data from Firestore and populate UI
 async function loadUserData() {
   if (!user) return;
   document.getElementById("user-email").textContent = user.email || "";
@@ -81,7 +78,6 @@ async function loadUserData() {
   phrasesGreyed = data.search_phrases_greyed || false;
   setPhrasesDisabled(phrasesGreyed);
 
-  // Populate preferences fields
   document.getElementById("date-from").value = data.date_range?.from || "";
   document.getElementById("date-to").value = data.date_range?.to || "";
   ["video-short", "video-medium", "video-long", "age-restricted"].forEach(id => {
@@ -89,12 +85,10 @@ async function loadUserData() {
   });
   document.getElementById("ocr-phrases").value = (data.ocr_terms || []).join(", ");
   document.getElementById("modal-filler-dict").value = cachedFillerDict.join(", ");
-
   document.getElementById("token-count").textContent = data.api_tokens_remaining ?? "—";
   renderHits(data.daily_hits || []);
 }
 
-// Build the 20 search phrase input fields with values
 function buildSearchInputs(phrases) {
   const container = document.getElementById("search-phrase-list");
   container.innerHTML = "";
@@ -112,7 +106,6 @@ function buildSearchInputs(phrases) {
   }
 }
 
-// Enable or disable editing of search phrase inputs
 function setPhrasesDisabled(disabled) {
   document.querySelectorAll("#search-phrase-list input").forEach(input => {
     input.disabled = disabled;
@@ -121,11 +114,11 @@ function setPhrasesDisabled(disabled) {
   phrasesGreyed = disabled;
 }
 
-// Save search phrases to Firestore, disable editing afterward
 async function saveSearchPhrases() {
   if (!user) return;
   const phrases = Array.from(document.querySelectorAll("#search-phrase-list input"))
-    .map(input => input.value.trim()).filter(Boolean);
+    .map(input => input.value.trim())
+    .filter(Boolean);
   await db.collection("users").doc(user.uid).set({
     search_phrases: phrases,
     search_phrases_greyed: true,
@@ -134,7 +127,6 @@ async function saveSearchPhrases() {
   loadUserData();
 }
 
-// Enable editing of search phrases
 async function enableSearchEditing() {
   if (!user) return;
   await db.collection("users").doc(user.uid).set({
@@ -144,21 +136,17 @@ async function enableSearchEditing() {
   loadUserData();
 }
 
-// Save OCR phrases, comma or space separated
 async function saveOcrPhrases() {
   if (!user) return;
-  let terms = document.getElementById("ocr-phrases").value.split(/[, ]+/)
-    .map(t => t.trim()).filter(Boolean);
+  let terms = document.getElementById("ocr-phrases").value.split(/[, ]+/).map(t => t.trim()).filter(Boolean);
   await db.collection("users").doc(user.uid).set({ocr_terms: terms}, {merge:true});
 }
 
-// Save filler dictionary (chunks due to Firestore limits)
 async function saveFillerDictionary() {
   if (!user) return;
-  let words = document.getElementById("modal-filler-dict").value.split(",")
-    .map(w => w.trim()).filter(Boolean);
+  let words = document.getElementById("modal-filler-dict").value.split(",").map(w => w.trim()).filter(Boolean);
   const MAX_CHUNK=300;
-  for (let i=0; i < words.length; i+= MAX_CHUNK) {
+  for (let i=0; i < words.length; i+=MAX_CHUNK) {
     let chunk = words.slice(i, i+MAX_CHUNK);
     let obj = {};
     obj[`filler_phrases_${i/MAX_CHUNK}`] = chunk;
@@ -168,7 +156,6 @@ async function saveFillerDictionary() {
   alert("Filler dictionary saved!");
 }
 
-// Save user preferences for date range, video lengths, and age restriction
 async function savePreferences() {
   if (!user) return;
   const data = {
@@ -184,7 +171,6 @@ async function savePreferences() {
   await db.collection("users").doc(user.uid).set(data, {merge:true});
 }
 
-// Render the daily OCR hit results to the UI
 function renderHits(hits) {
   const container = document.getElementById("hit-list");
   if (!hits.length) {
@@ -199,14 +185,16 @@ function renderHits(hits) {
   container.innerHTML = html;
 }
 
-// Run the scheduled search manually by calling backend Cloud Function
+// Key section: schedule search goes through cors-anywhere proxy
 async function runScheduledSearch() {
   if (!user) return;
   const statusEl = document.getElementById("run-scheduled-status");
   statusEl.textContent = "Running...";
   try {
     const idToken = await user.getIdToken();
-    const response = await fetch(CLOUD_FUNCTION_URL, {
+    // Add proxy to the fetch URL
+    const proxyUrl = CORS_PROXY + CLOUD_FUNCTION_URL;
+    const response = await fetch(proxyUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -227,5 +215,7 @@ async function runScheduledSearch() {
   }
   setTimeout(() => { statusEl.textContent = ""; }, 10000);
 }
+
+
 
 
