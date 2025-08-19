@@ -70,10 +70,11 @@ const videoShortCheckbox = document.getElementById("video-short");
 const videoMediumCheckbox = document.getElementById("video-medium");
 const videoLongCheckbox = document.getElementById("video-long");
 const ageRestrictedCheckbox = document.getElementById("age-restricted");
-const useFillerCheckbox = document.getElementById("use-filler-phrases"); // NEW: checkbox to use filler phrases
+const useFillerCheckbox = document.getElementById("use-filler-phrases"); // New checkbox element
 
 // --- Initialize app ---
-window.onload = () => {
+window.addEventListener('DOMContentLoaded', () => {
+  // Listen to Firebase auth state changes and toggle views accordingly
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
@@ -85,22 +86,26 @@ window.onload = () => {
     }
   });
 
-  signinBtn.onclick = () => {
+  // Hook up button event listeners
+  signinBtn.addEventListener('click', () => {
     const provider = new GoogleAuthProvider();
     signInWithPopup(auth, provider).catch(e => alert("Sign-in failed: " + e.message));
-  };
+  });
 
-  signoutBtn.onclick = () => signOut(auth).catch(e => alert("Sign-out failed: " + e.message));
+  signoutBtn.addEventListener('click', () => {
+    signOut(auth).catch(e => alert("Sign-out failed: " + e.message));
+  });
 
-  savePhrasesBtn.onclick = saveSearchPhrases;
-  editPhrasesBtn.onclick = enableSearchEditing;
-  saveOcrBtn.onclick = saveOcrPhrases;
-  fillerSaveBtn.onclick = saveFillerDictionary;
-  runScheduledBtn.onclick = runScheduledSearch;
+  savePhrasesBtn.addEventListener('click', saveSearchPhrases);
+  editPhrasesBtn.addEventListener('click', enableSearchEditing);
+  saveOcrBtn.addEventListener('click', saveOcrPhrases);
+  fillerSaveBtn.addEventListener('click', saveFillerDictionary);
+  runScheduledBtn.addEventListener('click', runScheduledSearch);
 
+  // Preferences auto-save on change
   [dateFromInput, dateToInput, videoShortCheckbox, videoMediumCheckbox, videoLongCheckbox, ageRestrictedCheckbox, useFillerCheckbox]
     .forEach(el => el.addEventListener("change", savePreferences));
-};
+});
 
 // --- UI helpers ---
 function showLogin() {
@@ -129,7 +134,7 @@ async function loadUserData() {
   const docSnap = await getDoc(docRef);
   const userData = docSnap.exists() ? docSnap.data() : {};
 
-  // Search phrases
+  // Search phrases and grey state
   const phrases = userData.search_phrases || [];
   buildSearchInputs(phrases);
   phrasesGreyed = userData.search_phrases_greyed || false;
@@ -142,12 +147,12 @@ async function loadUserData() {
   videoMediumCheckbox.checked = !!userData.video_medium;
   videoLongCheckbox.checked = !!userData.video_long;
   ageRestrictedCheckbox.checked = !!userData.age_restricted;
-  useFillerCheckbox.checked = !!userData.use_filler_phrases; // NEW
+  useFillerCheckbox.checked = !!userData.use_filler_phrases;
 
   // OCR terms
   ocrPhrasesTextarea.value = (userData.ocr_terms || []).join(", ");
 
-  // Filler dictionary loading (chunked keys)
+  // Filler dictionary load (chunked fields)
   cachedFillerWords = [];
   for (const key in userData) {
     if (key.startsWith("filler_phrases_") && Array.isArray(userData[key])) {
@@ -161,7 +166,7 @@ async function loadUserData() {
   renderHits(userData.daily_hits || []);
 }
 
-// Create 20 search inputs with current phrases
+// Build 20 search phrase inputs
 function buildSearchInputs(phrases) {
   searchPhraseListEl.innerHTML = "";
   for (let i = 0; i < 20; i++) {
@@ -178,7 +183,7 @@ function buildSearchInputs(phrases) {
   }
 }
 
-// Render daily OCR hits
+// Render daily hits list
 function renderHits(hits) {
   if (!hits.length) {
     hitListEl.innerHTML = "<p>No hits today.</p>";
@@ -196,9 +201,9 @@ function renderHits(hits) {
   hitListEl.innerHTML = html;
 }
 
-// --- Save handlers ---
+// --- Save handlers with filler phrases option ---
 
-// Save search phrases; optionally append filler phrases if checkbox checked
+// Save search phrases, optionally appending filler phrases
 async function saveSearchPhrases() {
   if (!currentUser) return;
 
@@ -206,7 +211,7 @@ async function saveSearchPhrases() {
     .map(i => i.value.trim())
     .filter(Boolean);
 
-  // Append filler phrases if selected and available
+  // Append filler phrases if checkbox checked
   if (useFillerCheckbox.checked && cachedFillerWords.length > 0) {
     phrases = phrases.concat(cachedFillerWords);
   }
@@ -231,7 +236,7 @@ async function enableSearchEditing() {
   await loadUserData();
 }
 
-// Save OCR terms comma separated
+// Save OCR phrases comma separated
 async function saveOcrPhrases() {
   if (!currentUser) return;
   const terms = ocrPhrasesTextarea.value.split(/[, ]+/).map(t => t.trim()).filter(Boolean);
@@ -239,15 +244,14 @@ async function saveOcrPhrases() {
   await setDoc(docRef, { ocr_terms: terms }, { merge: true });
 }
 
-// Save filler dictionary chunked due to Firestore limits (max 300 entries per field)
+// Save filler dictionary in chunks due to Firestore limits
 async function saveFillerDictionary() {
   if (!currentUser) return;
   const words = fillerDictTextarea.value.split(",").map(w => w.trim()).filter(Boolean);
-  cachedFillerWords = words; // update cache
+  cachedFillerWords = words;
 
   const MAX_CHUNK = 300;
   const docRef = doc(db, "users", currentUser.uid);
-  // Split into chunks and save each chunk as its own field
   for (let i = 0; i < words.length; i += MAX_CHUNK) {
     const chunk = words.slice(i, i + MAX_CHUNK);
     await setDoc(docRef, { [`filler_phrases_${i / MAX_CHUNK}`]: chunk }, { merge: true });
@@ -256,7 +260,7 @@ async function saveFillerDictionary() {
   alert("Filler dictionary saved!");
 }
 
-// Save user preferences including new 'use filler' option
+// Save user preferences including filler phrases toggle
 async function savePreferences() {
   if (!currentUser) return;
   const docRef = doc(db, "users", currentUser.uid);
@@ -273,7 +277,7 @@ async function savePreferences() {
   }, { merge: true });
 }
 
-// --- Main backend API call through CORS proxy ---
+// --- API call to backend via CORS proxy ---
 async function runScheduledSearch() {
   if (!currentUser) return;
 
@@ -305,6 +309,8 @@ async function runScheduledSearch() {
 
   setTimeout(() => { runStatusEl.textContent = ""; }, 10000);
 }
+
+
 
 
 
