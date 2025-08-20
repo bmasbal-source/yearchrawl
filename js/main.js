@@ -1,29 +1,19 @@
-// js/main.js
+// main.js
+
 /**
  * Frontend JavaScript for YouTube OCR Daily app using CORS Anywhere proxy on Google Cloud Run.
- *
  * This script handles:
  * - Firebase Authentication (Google Sign-In)
  * - Firestore user data CRUD (search phrases, preferences, filler dictionary)
  * - Triggering backend Cloud Function calls via a CORS proxy
  * - Proper CORS handling by routing API requests through the proxy URL
  * - Optionally filling search phrases with filler phrases before saving or search
+ * - Displaying detailed log data received from backend after search
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // --- Firebase config and initialization ---
 const firebaseConfig = {
@@ -70,7 +60,10 @@ const videoShortCheckbox = document.getElementById("video-short");
 const videoMediumCheckbox = document.getElementById("video-medium");
 const videoLongCheckbox = document.getElementById("video-long");
 const ageRestrictedCheckbox = document.getElementById("age-restricted");
-const useFillerCheckbox = document.getElementById("use-filler-phrases"); // New checkbox element
+const useFillerCheckbox = document.getElementById("use-filler-phrases");
+
+// Backend log display element (added in index.html)
+const backendLogEl = document.getElementById("backend-log");
 
 // --- Initialize app ---
 window.addEventListener('DOMContentLoaded', () => {
@@ -116,6 +109,7 @@ function showMainMenu() {
   loginView.style.display = "none";
   mainMenu.style.display = "block";
 }
+
 function setPhrasesDisabled(disabled) {
   searchPhraseListEl.querySelectorAll("input").forEach(input => {
     input.disabled = disabled;
@@ -127,7 +121,6 @@ function setPhrasesDisabled(disabled) {
 // --- Load user data ---
 async function loadUserData() {
   if (!currentUser) return;
-
   userEmailEl.textContent = currentUser.email || "";
 
   const docRef = doc(db, "users", currentUser.uid);
@@ -164,6 +157,7 @@ async function loadUserData() {
   tokenCountEl.textContent = userData.api_tokens_remaining ?? "—";
 
   renderHits(userData.daily_hits || []);
+  clearBackendLog();
 }
 
 // Build 20 search phrase inputs
@@ -189,82 +183,86 @@ function renderHits(hits) {
     hitListEl.innerHTML = "<p>No hits today.</p>";
     return;
   }
-  let html = "<ul>";
-  hits.forEach(h => {
-    html += `<li>
-      <a href="https://youtube.com/watch?v=${h.videoID}" target="_blank" rel="noopener">${h.videoID}</a>
-      | <strong>${h.term}</strong>
-      | Confidence: ${h.likelihood}
-    </li>`;
+  let html = "<ul class='list-group'>";
+  hits.forEach(hit => {
+    html += `<li class="list-group-item">${hit.term} found in video ID: ${hit.videoID} with confidence ${hit.likelihood}</li>`;
   });
   html += "</ul>";
   hitListEl.innerHTML = html;
 }
 
-// --- Save handlers with filler phrases option ---
+// Clear backend log display
+function clearBackendLog() {
+  if (backendLogEl) {
+    backendLogEl.innerHTML = "";
+  }
+}
 
-// Save search phrases, optionally appending filler phrases
+// Display backend search attempt log nicely
+function renderBackendLog(log) {
+  if (!backendLogEl || !log) return;
+
+  let html = "<h4>Backend Search Log</h4>";
+  html += "<ul>";
+
+  // Video search counts
+  if (log.video_search_counts && log.video_search_counts.length) {
+    html += "<li><strong>Video Search Results:</strong><ul>";
+    log.video_search_counts.forEach(item => {
+      let from = item.time_window[0] || "N/A";
+      let to = item.time_window[1] || "N/A";
+      html += `<li>Phrase: <em>${item.phrase}</em> | Date Range: ${from} - ${to} | Results: ${item.results}</li>`;
+    });
+    html += "</ul></li>";
+  }
+
+  html += `<li>Thumbnails successfully opened: ${log.thumbnails_opened || 0}</li>`;
+  html += `<li>Thumbnail open failures: ${log.thumbnail_open_failures || 0}</li>`;
+  html += `<li>OCR errors encountered: ${log.ocr_errors || 0}</li>`;
+  html += `<li>OCR low confidence matches (not hits): ${log.ocr_low_confidence || 0}</li>`;
+  html += `<li>Total backend execution time: ${log.total_time_sec || 0} seconds</li>`;
+  html += "</ul>";
+
+  backendLogEl.innerHTML = html;
+}
+
+// --- Save and editing functions ---
 async function saveSearchPhrases() {
   if (!currentUser) return;
-
-  let phrases = Array.from(searchPhraseListEl.querySelectorAll("input"))
-    .map(i => i.value.trim())
-    .filter(Boolean);
-
-  // Append filler phrases if checkbox checked
-  if (useFillerCheckbox.checked && cachedFillerWords.length > 0) {
-    phrases = phrases.concat(cachedFillerWords);
-  }
-
-  const docRef = doc(db, "users", currentUser.uid);
-  await setDoc(docRef, {
-    search_phrases: phrases,
-    search_phrases_greyed: true,
-    use_filler_phrases: useFillerCheckbox.checked
-  }, { merge: true });
-
+  const phrases = [...searchPhraseListEl.querySelectorAll("input")].map(input => input.value.trim()).filter(Boolean);
+  const userRef = doc(db, "users", currentUser.uid);
+  await setDoc(userRef, { search_phrases: phrases }, { merge: true });
+  phrasesGreyed = true;
   setPhrasesDisabled(true);
-  await loadUserData();
 }
 
-// Enable editing mode for search phrases
-async function enableSearchEditing() {
-  if (!currentUser) return;
-  const docRef = doc(db, "users", currentUser.uid);
-  await setDoc(docRef, { search_phrases_greyed: false }, { merge: true });
+function enableSearchEditing() {
   setPhrasesDisabled(false);
-  await loadUserData();
 }
 
-// Save OCR phrases comma separated
 async function saveOcrPhrases() {
   if (!currentUser) return;
-  const terms = ocrPhrasesTextarea.value.split(/[, ]+/).map(t => t.trim()).filter(Boolean);
-  const docRef = doc(db, "users", currentUser.uid);
-  await setDoc(docRef, { ocr_terms: terms }, { merge: true });
+  const ocrTerms = ocrPhrasesTextarea.value.split(",").map(s => s.trim()).filter(Boolean);
+  const userRef = doc(db, "users", currentUser.uid);
+  await setDoc(userRef, { ocr_terms: ocrTerms }, { merge: true });
 }
 
-// Save filler dictionary in chunks due to Firestore limits
 async function saveFillerDictionary() {
   if (!currentUser) return;
-  const words = fillerDictTextarea.value.split(",").map(w => w.trim()).filter(Boolean);
-  cachedFillerWords = words;
-
-  const MAX_CHUNK = 300;
-  const docRef = doc(db, "users", currentUser.uid);
-  for (let i = 0; i < words.length; i += MAX_CHUNK) {
-    const chunk = words.slice(i, i + MAX_CHUNK);
-    await setDoc(docRef, { [`filler_phrases_${i / MAX_CHUNK}`]: chunk }, { merge: true });
+  const words = fillerDictTextarea.value.split(",").map(s => s.trim()).filter(Boolean);
+  const chunkSize = 500;
+  const userRef = doc(db, "users", currentUser.uid);
+  let updates = {};
+  for (let i = 0; i < words.length; i += chunkSize) {
+    updates[`filler_phrases_${i / chunkSize}`] = words.slice(i, i + chunkSize);
   }
-
-  alert("Filler dictionary saved!");
+  await setDoc(userRef, updates, { merge: true });
+  cachedFillerWords = words;
 }
 
-// Save user preferences including filler phrases toggle
 async function savePreferences() {
   if (!currentUser) return;
-  const docRef = doc(db, "users", currentUser.uid);
-  await setDoc(docRef, {
+  const prefs = {
     date_range: {
       from: dateFromInput.value.trim(),
       to: dateToInput.value.trim()
@@ -274,40 +272,36 @@ async function savePreferences() {
     video_long: videoLongCheckbox.checked,
     age_restricted: ageRestrictedCheckbox.checked,
     use_filler_phrases: useFillerCheckbox.checked
-  }, { merge: true });
+  };
+  const userRef = doc(db, "users", currentUser.uid);
+  await setDoc(userRef, prefs, { merge: true });
 }
 
-// --- API call to backend via CORS proxy ---
+// --- Run scheduled search on backend ---
 async function runScheduledSearch() {
   if (!currentUser) return;
-
-  runStatusEl.textContent = "Running...";
+  runStatusEl.textContent = "Running search...";
   try {
-    const idToken = await currentUser.getIdToken();
-
     const response = await fetch(proxiedBackendUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + idToken
-      },
-      body: JSON.stringify({ user_id: currentUser.uid })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.uid }),
     });
-
-    if (!response.ok) {
-      const errorJson = await response.json().catch(() => ({}));
-      runStatusEl.textContent = `Error: ${errorJson.error || response.statusText}`;
-      return;
-    }
     const data = await response.json();
-    runStatusEl.textContent = `Search complete: ${data.hits_count} hits. Tokens left: ${data.tokens_remaining}`;
-
-    await loadUserData();
-  } catch (err) {
-    runStatusEl.textContent = `Failed: ${err.message}`;
+    if (data.status === 'success') {
+      // Reload user data to update UI including hits and tokens
+      await loadUserData();
+      // Display detailed backend log data from search attempt
+      renderBackendLog(data.log);
+      runStatusEl.textContent = `Search completed. Hits found: ${data.hits_count}, Tokens used: ${data.tokens_used}, Tokens remaining: ${data.tokens_remaining}`;
+    } else {
+      runStatusEl.textContent = "Search returned error: " + (data.error || "Unknown error");
+      clearBackendLog();
+    }
+  } catch (e) {
+    runStatusEl.textContent = "Search failed: " + e.message;
+    clearBackendLog();
   }
-
-  setTimeout(() => { runStatusEl.textContent = ""; }, 10000);
 }
 
 
